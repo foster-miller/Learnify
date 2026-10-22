@@ -1,0 +1,38 @@
+:root {
+  --text-scale: 1;
+  --bg: #f7f6f1;
+  --surface: #fdfcf8;
+  --surface-2: #e8ede4;
+  --sand: #efe8dc;
+  --ink: #1f3a2d;
+  --muted: #5d665f;
+  --line: #dfdcd0;
+  --brand: #2f5d4a;
+  --brand-ink: #ffffff;
+  --accent: #b5764a;
+  --danger: #a33a2a;
+  --focus: #1a73e8;
+  --shadow: 0 1px 2px rgb(31 58 45 / 6%), 0 6px 20px rgb(31 58 45 / 5%);
+
+  --serif: 'Lora', Georgia, serif;
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius: 14px;
+}
+
+/* High-contrast dark mode. */
+:root[data-theme='contrast'] {
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface-2: #14201a;
+  --sand: #111111;
+  --ink: #ffffff;
+  --muted: #d6d6d6;
+  --line: #8a8a8a;
+  --brand: #7ee0b0;
+  --brand-ink: #000000;
+  --accent: #ffcf66;
+  --danger: #ff8a7a;
+  --focus: #ffe14d;
+  --shadow: none;
+  color-scheme: dark;
+}
