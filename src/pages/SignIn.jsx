@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Arrow, Eye } from '../components/Icons'
 import { APP_NAME } from '../config/app'
 import { useAuth } from '../context/AuthContext'
+import { supabaseConfigured } from '../services/supabaseClient'
 
 export default function SignIn() {
   const { user, signIn, signUp } = useAuth()
@@ -29,6 +30,7 @@ export default function SignIn() {
   const submit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!supabaseConfigured) return setError('Accounts are unavailable: this site is not connected to its database yet.')
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
     if (password.length < 6) return setError('Password must be at least 6 characters.')
     setBusy(true)
@@ -81,9 +83,12 @@ export default function SignIn() {
             <button type="button" className="icon-btn" aria-label={show ? 'Hide password' : 'Show password'} onClick={() => setShow(!show)}><Eye size={18} /></button>
           </span>
         </label>
+        {!supabaseConfigured && (
+          <p className="notice" role="status">Accounts are unavailable right now because this site isn’t connected to its database yet. You can still explore every topic.</p>
+        )}
         {error && <p className="error" role="alert">{error}</p>}
         {notice && <p className="notice" role="status">{notice}</p>}
-        <button className="btn btn-wide" type="submit" disabled={busy}>
+        <button className="btn btn-wide" type="submit" disabled={busy || !supabaseConfigured}>
           <Arrow size={18} /> {busy ? 'One moment…' : signingUp ? 'Create account' : 'Sign in'}
         </button>
         <p className="center small">
