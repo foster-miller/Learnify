@@ -156,6 +156,19 @@ h3 { font-size: 1.35rem; }
 .source-note { border-top: 1px solid var(--line); padding-top: 1rem; }
 .sk-facts { height: 12rem; }
 
+/* Read aloud */
+.speak { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.75rem; }
+.section-head .speak, .acc-head .speak { margin-top: 0; }
+.speak-btn, .speak-stop { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--line); background: var(--surface); color: var(--brand); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.85rem; font-weight: 500; }
+.speak-btn:hover, .speak-stop:hover { border-color: var(--brand); }
+.speak-btn.is-active { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.speak-stop { padding: 0.4rem; width: 2rem; height: 2rem; justify-content: center; }
+.acc-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.acc-head h3 { flex: 1; min-width: 0; }
+.field { display: grid; gap: 0.4rem; }
+.legend-like { font-weight: 600; }
+.field select { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 0.7rem 0.9rem; width: 100%; max-width: 28rem; }
+
 /* Skeletons & notices */
 .skeleton { background: linear-gradient(90deg, var(--surface-2), var(--sand), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); }
 .sk-card { height: 20rem; } .sk-result { height: 7.5rem; } .sk-hero { height: 22rem; } .sk-list { height: 12rem; }

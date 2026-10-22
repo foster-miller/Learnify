@@ -4,6 +4,7 @@ import ArticleSections, { Contents, useOpenSections } from '../components/Articl
 import Breadcrumb from '../components/Breadcrumb'
 import FavoriteButton from '../components/FavoriteButton'
 import QuickFacts from '../components/QuickFacts'
+import SpeakButton from '../components/SpeakButton'
 import ResultCard from '../components/ResultCard'
 import { Shuffle } from '../components/Icons'
 import { searchPath } from '../config/paths'
@@ -14,6 +15,7 @@ import { useAsync } from '../hooks/useAsync'
 import { useTrail } from '../hooks/useTrail'
 import { isAllowed } from '../services/contentFilter'
 import { lastPositionService } from '../services/lastPositionService'
+import { stop as stopSpeech } from '../services/speechService'
 import { getArticle, getLateralTopics, getMentionedTopics, getRelated, getRelatedCategories, getSummary } from '../services/wikiService'
 import { splitLead } from '../utils/text'
 
@@ -52,6 +54,9 @@ export default function Topic() {
     if (user) lastPositionService.save(trail).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, trailKey])
+
+  // Leaving a topic (or switching to another) stops any reading in progress.
+  useEffect(() => () => stopSpeech(), [title])
 
   const summary = useAsync(() => getSummary(title), [title, filterLevel])
   const article = useAsync(() => getArticle(title), [title])
@@ -138,6 +143,7 @@ export default function Topic() {
           <h1 className="serif">{topic.title}</h1>
           {topic.description && <p className="lede serif">{topic.description}</p>}
           <p className="brief">{brief}</p>
+          <SpeakButton id="summary" label={`Summary of ${topic.title}`} text={`${topic.title}. ${brief}`} />
           <div className="actions">
             <FavoriteButton topic={topic} className="fav-labeled" />
             <span className="muted small">{isFavorite(topic.title) ? 'Saved to favorites' : 'Save to favorites'}</span>

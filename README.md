@@ -8,6 +8,8 @@ Every topic page has a short summary, the full article in collapsible sections, 
 - **Alongside**: similar topics at the same level
 - **Zoom out**: the broader category a topic belongs to
 
+**Listen:** every section has a Listen button (text to speech with your device's voices, adjustable speed and voice). Sections start collapsed. Voices come from your device, so quality varies: Learnify picks the most natural one it finds, and Account → Read aloud explains how to install a better one.
+
 Signed-in users can save favorites, pick up where they left off, and keep their reading settings (text size, high-contrast dark mode, content filter) on every device.
 
 ## Stack

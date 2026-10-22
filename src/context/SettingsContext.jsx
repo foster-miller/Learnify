@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { setFilterLevel } from '../services/contentFilter'
 import { profileService } from '../services/profileService'
+import { setSpeechPrefs } from '../services/speechService'
 import { useAuth } from './AuthContext'
 
 const KEY = 'learnify:settings'
 export const TEXT_SIZES = { md: 100, lg: 115, xl: 130 }
-const DEFAULTS = { textSize: 'md', theme: 'light', showMature: false, parentalPin: null }
+export const SPEECH_RATES = [0.8, 1, 1.25, 1.5]
+const DEFAULTS = { textSize: 'md', theme: 'light', showMature: false, parentalPin: null, speechRate: 1, speechVoice: '' }
 
 const load = () => {
   try {
@@ -24,6 +26,9 @@ export function SettingsProvider({ children }) {
   const filterLevel = parental ? 'kids' : settings.showMature ? 'off' : 'nsfw'
   // Set during render so child effects/fetches in this same pass see the right level.
   setFilterLevel(filterLevel)
+
+  // Read-aloud preferences are per device (voices differ between browsers), so they are not synced.
+  setSpeechPrefs({ rate: settings.speechRate, voiceURI: settings.speechVoice })
 
   useEffect(() => {
     const root = document.documentElement

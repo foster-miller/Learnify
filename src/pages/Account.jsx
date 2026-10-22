@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { TEXT_SIZES, useSettings } from '../context/SettingsContext'
+import { SPEECH_RATES, TEXT_SIZES, useSettings } from '../context/SettingsContext'
+import { autoVoice, isHighQuality, play, speechSupported, stop, useVoices } from '../services/speechService'
 
 const SIZE_LABELS = { md: 'Standard', lg: 'Large', xl: 'Extra large' }
 
@@ -10,6 +11,9 @@ export default function Account() {
   const s = useSettings()
   const [pin, setPin] = useState('')
   const [pinMsg, setPinMsg] = useState('')
+  const voices = useVoices()
+  const automatic = autoVoice(voices)
+  const hasNaturalVoice = voices.some(isHighQuality)
 
   const toggleParental = (e) => {
     e.preventDefault()
@@ -52,6 +56,43 @@ export default function Account() {
           </div>
         </fieldset>
       </section>
+
+      {speechSupported() && (
+        <section className="panel">
+          <h2 className="serif">Read aloud</h2>
+          <p className="muted small">Every section of a topic has a Listen button. Voices come from your device, so they vary by browser.</p>
+          <fieldset>
+            <legend>Speed</legend>
+            <div className="segmented">
+              {SPEECH_RATES.map((r) => (
+                <button key={r} aria-pressed={s.speechRate === r} className={s.speechRate === r ? 'active' : ''} onClick={() => s.update({ speechRate: r })}>
+                  {r}×
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <label className="field">
+            <span className="legend-like">Voice</span>
+            <select value={s.speechVoice} onChange={(e) => s.update({ speechVoice: e.target.value })}>
+              <option value="">Automatic{automatic ? ` (${automatic.name})` : ' (device default)'}</option>
+              {voices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang}){isHighQuality(v) ? ' ★ natural' : ''}</option>
+              ))}
+            </select>
+          </label>
+          {!hasNaturalVoice && (
+            <p className="muted small">
+              Your device only has basic voices, which sound robotic. For much more natural speech, install a free premium voice and reload this page.
+              On a Mac: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices, then download one marked Premium or Enhanced.
+              On Windows: open Learnify in Microsoft Edge, which includes “Natural” voices. Automatic picks the best voice it finds.
+            </p>
+          )}
+          <div className="actions">
+            <button className="btn btn-ghost" type="button" onClick={() => play('voice-test', 'This is how Learnify will read topics aloud to you.')}>Test voice</button>
+            <button className="link-text" type="button" onClick={stop}>Stop</button>
+          </div>
+        </section>
+      )}
 
       <section className="panel">
         <h2 className="serif">Content</h2>

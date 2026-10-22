@@ -12,10 +12,10 @@ function sentenceEnds(text) {
 
 // Removes pronunciation and transliteration clutter such as "( or ; Japanese: 京都, Kyōto [k̟ʲjó̞ò̞.tò̞] )":
 // parentheticals holding IPA brackets, non-Latin scripts, or "pronounced". Dates and "née" notes stay.
-const FOREIGN = /[\u0250-\u02FF\u0300-\u1DFF\u2E80-\uFFFF]|\[|pronounced|\blisten\b/i
+const FOREIGN = /[\u0250-\u02FF\u0300-\u1DFF\u1F00-\u1FFF\u2E80-\uFFFF]|\[|pronounced|\blisten\b/i
 export function stripPronunciation(text) {
   return text
-    .replace(/\s*\(([^()]*)\)/g, (all, inner) => (FOREIGN.test(inner) || /^[\s;,]*(or\b|;)/.test(inner) ? '' : all))
+    .replace(/\s*\(([^()]*)\)/g, (all, inner) => (!inner.trim() || FOREIGN.test(inner) || /^[\s;,]*(or\b|;)/.test(inner) ? '' : all))
     .replace(/\s+([,;.])/g, '$1')
     .replace(/\s{2,}/g, ' ')
     .trim()
@@ -27,7 +27,7 @@ export function splitLead(paragraph = '', { min = 90, max = 320 } = {}) {
   const text = stripPronunciation(paragraph)
   const ends = sentenceEnds(text)
   let cut = ends[0] ?? text.length
-  if (cut < min && ends[1] && ends[1] <= max) cut = ends[1]
+  if (cut < min && ends[1] && ends[1] <= 260) cut = ends[1]
   if (cut > max) {
     const space = text.lastIndexOf(' ', max - 20)
     cut = space > 0 ? space : max

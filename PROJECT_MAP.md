@@ -14,6 +14,7 @@ React 19 + Vite + react-router-dom, plain CSS, no state library. Content comes f
 | `src/config/app.js` | `APP_NAME`, `TAGLINE`, `GROUPS`, `CATEGORIES` (16 starters), `SUGGESTIONS` |
 | `src/config/paths.js` | `topicPath`, `searchPath` URL builders |
 | `src/services/wikiService.js` | Only file that talks to Wikipedia and Wikidata: `search`, `getTopics`, `getSummary`, `getArticle` (full text split into sections), `getRelated` (Wikidata facts, deeper and zoom-out topics), `getMentionedTopics` (article links ranked by mentions), `getLateralTopics` (`morelike:`), `getRelatedCategories`, `getRandomTopic`. Cached, normalized to `Topic` |
+| `src/services/speechService.js` | Text to speech with the browser's built-in voices: one shared player (play, pause, resume, stop), sentence chunking, `speakable` (drops pronunciation notes and non-Latin script before speaking), voice choice (`autoVoice` prefers Premium/Enhanced/Natural/Google voices, then the system default; joke voices are hidden), `useSpeechStatus` |
 | `src/services/contentFilter.js` | Keyword filter, level `off` / `nsfw` / `kids` |
 | `src/services/supabaseClient.js` | Supabase client from `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (`.env.local`) |
 | `src/services/authService.js` | Supabase Auth, email + password: `getUser`, `onChange`, `signIn`, `signUp`, `signOut` |
@@ -26,7 +27,7 @@ React 19 + Vite + react-router-dom, plain CSS, no state library. Content comes f
 | `src/hooks/useAsync.js` | Async-on-deps hook returning `{data, error, loading}`, ignores stale runs |
 | `src/hooks/useTrail.js` | Drill-down breadcrumb path in sessionStorage |
 | `src/utils/text.js` | `splitLead`: splits an intro paragraph into a short summary and the remainder, so no sentence repeats |
-| `src/components/` | `Layout` (header, footer, mobile tab bar), `SearchBar`, `TopicCard`, `ResultCard`, `FavoriteButton`, `Breadcrumb`, `QuickFacts` (Wikidata facts), `ArticleSections` (collapsible article sections, contents list, `useOpenSections`), `Icons` |
+| `src/components/` | `Layout` (header, footer, mobile tab bar), `SearchBar`, `TopicCard`, `ResultCard`, `FavoriteButton`, `Breadcrumb`, `QuickFacts` (Wikidata facts), `SpeakButton` (Listen/Pause/Resume/Stop for one block of text), `ArticleSections` (collapsible article sections, contents list, `useOpenSections`), `Icons` |
 | `src/pages/` | `Discover`, `Search`, `Topic`, `Random`, `Favorites`, `SignIn`, `Account` |
 | `src/styles/` | `tokens.css` (colors, fonts, contrast theme), `global.css` (layout and components) |
 
@@ -34,7 +35,7 @@ React 19 + Vite + react-router-dom, plain CSS, no state library. Content comes f
 
 - **Discover:** `pages/Discover.jsx`, `config/app.js`, `TopicCard`
 - **Search:** `pages/Search.jsx`, `SearchBar`, `ResultCard`, `wikiService.search`
-- **Topic page:** `pages/Topic.jsx`. Hero shows a short summary; below it come the full article (`ArticleSections`), Quick facts (`QuickFacts`), then Keep exploring: Dive deeper, Alongside, Zoom out, Browse by category. Links extend the trail via `useTrail`
+- **Topic page:** `pages/Topic.jsx`. Hero shows a short summary; below it come the full article (`ArticleSections`), Quick facts (`QuickFacts`), a Listen button on the summary, the full picture and every section, then Keep exploring: Dive deeper, Alongside, Zoom out, Browse by category. Links extend the trail via `useTrail`
 - **Random:** `pages/Random.jsx` fetches a topic then redirects to `/topic/:title` with `state.random`
 - **Favorites:** `pages/Favorites.jsx`, `FavoritesContext`, `FavoriteButton`. Signed-out users are sent to `/signin` and return afterwards. Only titles are stored; details are re-fetched from Wikipedia
 - **Resume:** `Topic` saves the trail with `lastPositionService`; `Discover` shows a Continue banner

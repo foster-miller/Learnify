@@ -66,9 +66,11 @@ export async function getTopics(titles) {
   const pages = Object.values(data.query?.pages || {}).map(pageToTopic)
   const byTitle = new Map(pages.map((p) => [p.title.toLowerCase(), p]))
   const redirects = new Map((data.query?.redirects || []).map((r) => [r.from.toLowerCase(), r.to.toLowerCase()]))
-  return titles
+  const found = titles
     .map((t) => byTitle.get(t.toLowerCase()) || byTitle.get(redirects.get(t.toLowerCase())))
     .filter(Boolean)
+  // Different requested titles can redirect to the same article; keep it once.
+  return [...new Map(found.map((t) => [t.title, t])).values()]
 }
 
 export async function getSummary(title) {
@@ -202,6 +204,8 @@ function parseTime(value) {
 
 function formatDate(t) {
   if (!t) return null
+  // Deep time (fossil ranges, geology): "323 million years ago" reads better than "323200000 BC".
+  if (t.bce && t.year >= 1e6) return `${Math.round(t.year / 1e6).toLocaleString('en-US')} million years ago`
   const era = t.bce ? ' BC' : ''
   if (t.precision >= 11 && t.month && t.day) return `${t.day} ${MONTHS[t.month - 1]} ${t.year}${era}`
   if (t.precision >= 10 && t.month) return `${MONTHS[t.month - 1]} ${t.year}${era}`
@@ -227,15 +231,21 @@ function latestQuantity(list = []) {
 
 // Properties to read, in display order: [property, max values shown].
 const PERSON_FACTS = [['P106', 4, 'Occupation'], ['P27', 3, 'Citizenship'], ['P69', 3, 'Education'], ['P166', 4, 'Awards'], ['P26', 2, 'Spouse'], ['P800', 3, 'Notable works']]
-const GENERIC_FACTS = [['P31', 2, 'Type'], ['P17', 2, 'Country'], ['P131', 2, 'Location'], ['P36', 1, 'Capital'], ['P6', 1, 'Head of government'], ['P170', 2, 'Created by'], ['P112', 2, 'Founded by'], ['P178', 2, 'Developer']]
+const GENERIC_FACTS = [
+  ['P31', 2, 'Type'], ['P105', 1, 'Rank'], ['P171', 1, 'Parent taxon'], ['P141', 1, 'Conservation status'],
+  ['P17', 2, 'Country'], ['P131', 2, 'Location'], ['P276', 2, 'Venue'], ['P159', 1, 'Headquarters'],
+  ['P36', 1, 'Capital'], ['P6', 1, 'Head of government'], ['P169', 1, 'CEO'], ['P452', 2, 'Industry'],
+  ['P1029', 4, 'Crew'], ['P710', 4, 'Participants'], ['P664', 2, 'Organized by'],
+  ['P170', 2, 'Created by'], ['P112', 2, 'Founded by'], ['P178', 2, 'Developer'],
+]
 // Properties whose extra values are history (past mayors, former capitals): show one, hide the count.
-const SINGLE_VALUE = new Set(['P6', 'P36'])
+const SINGLE_VALUE = new Set(['P6', 'P36', 'P169', 'P159'])
 // Closely connected items worth opening next ("dive deeper").
 const PERSON_DEEPER = ['P69', 'P108', 'P166', 'P26', 'P800', 'P101', 'P737', 'P19', 'P20']
 const GENERIC_DEEPER = ['P527', 'P178', 'P170', 'P112', 'P131', 'P138']
 // Broader items ("zoom out").
 const PERSON_BROADER = ['P106', 'P27']
-const GENERIC_BROADER = ['P279', 'P31', 'P361', 'P17']
+const GENERIC_BROADER = ['P171', 'P279', 'P361', 'P17'] // parent taxon, subclass of, part of, country
 
 export async function getRelated(qid, selfTitle) {
   const ent = await wikidata({ action: 'wbgetentities', ids: qid, props: 'claims' })
@@ -245,35 +255,50 @@ export async function getRelated(qid, selfTitle) {
       .filter((c) => c.rank !== 'deprecated')
       .map((c) => c.mainsnak?.datavalue?.value?.id)
       .filter(Boolean)
+  // The present holder of a single-holder role (CEO, mayor, capital…): Wikidata marks past holders with an
+  // end date, so take the preferred entry, else the latest one with no end. Nothing is better than a wrong answer.
+  const startOf = (c) => c.qualifiers?.P580?.[0]?.datavalue?.value?.time || ''
+  const current = (p) => {
+    const live = (claims[p] || []).filter((c) => c.rank !== 'deprecated' && c.mainsnak?.datavalue?.value?.id)
+    const preferred = live.filter((c) => c.rank === 'preferred')
+    const open = preferred.length ? preferred : live.filter((c) => !c.qualifiers?.P582)
+    return open.sort((a, b) => startOf(b).localeCompare(startOf(a))).map((c) => c.mainsnak.datavalue.value.id)
+  }
   const time = (p) => parseTime(claims[p]?.find((c) => c.rank !== 'deprecated')?.mainsnak?.datavalue?.value)
 
   const isPerson = ids('P31').includes('Q5')
   const factSpec = isPerson ? PERSON_FACTS : GENERIC_FACTS
   const deeperProps = isPerson ? PERSON_DEEPER : GENERIC_DEEPER
-  const broaderProps = (isPerson ? PERSON_BROADER : GENERIC_BROADER)
+  const broaderProps = isPerson ? PERSON_BROADER : GENERIC_BROADER
   const take = (props, per) => props.flatMap((p) => ids(p).slice(0, per))
   const deeperIds = [...new Set(take(deeperProps, 3))].slice(0, 14)
-  const broaderIds = [...new Set(take(broaderProps, 3).filter((id) => id !== 'Q5'))].slice(0, 8)
+  let broaderIds = [...new Set(take(broaderProps, 3).filter((id) => id !== 'Q5'))]
+  // "Instance of" (taxon, painting…) only helps when nothing more specific exists.
+  if (!isPerson && broaderIds.length === 0) broaderIds = [...new Set([...broaderIds, ...ids('P31').slice(0, 3)])]
+  broaderIds = broaderIds.slice(0, 8)
   const need = new Set([
     ...deeperIds,
     ...broaderIds,
-    ...factSpec.flatMap(([p, n]) => ids(p).slice(0, n * 3)),
+    ...factSpec.flatMap(([p, n]) => (SINGLE_VALUE.has(p) ? current(p).slice(0, n) : ids(p).slice(0, n * 3))),
     ...ids('P19').slice(0, 2),
     ...ids('P20').slice(0, 2),
   ])
 
   // One call turns every referenced item into an English label and (if it exists) an enwiki article title.
+  // wbgetentities accepts at most 50 ids per call, so resolve in batches.
   const refs = {}
-  if (need.size) {
-    const data = await wikidata({
-      action: 'wbgetentities',
-      ids: [...need].slice(0, 50).join('|'),
-      props: 'labels|sitelinks',
-      languages: 'en',
-      sitefilter: 'enwiki',
-    })
+  const all = [...need]
+  const batches = Array.from({ length: Math.ceil(all.length / 50) }, (_, i) => all.slice(i * 50, i * 50 + 50))
+  const resolved = await Promise.all(
+    batches.map((batch) =>
+      wikidata({ action: 'wbgetentities', ids: batch.join('|'), props: 'labels|sitelinks', languages: 'en', sitefilter: 'enwiki' }),
+    ),
+  )
+  for (const data of resolved) {
     for (const [id, e] of Object.entries(data.entities || {})) {
-      refs[id] = { text: e.labels?.en?.value, title: e.sitelinks?.enwiki?.title || null }
+      const article = e.sitelinks?.enwiki?.title || null
+      // Newer entries sometimes lack an English label but already have an English article.
+      refs[id] = { text: e.labels?.en?.value || article?.replace(/\s*\(.*\)$/, ''), title: article }
     }
   }
   const part = (id) => (refs[id]?.text ? refs[id] : null)
@@ -302,8 +327,21 @@ export async function getRelated(qid, selfTitle) {
       })
     }
   } else {
+    const sciName = claims.P225?.[0]?.mainsnak?.datavalue?.value
+    if (typeof sciName === 'string') facts.push({ label: 'Scientific name', parts: [{ text: sciName }] })
+    for (const [prop, label] of [['P577', 'Published'], ['P619', 'Launched'], ['P620', 'Landed'], ['P580', typeof sciName === 'string' ? 'First appeared' : 'Started'], ['P582', 'Ended'], ['P585', 'Date']]) {
+      const t = time(prop)
+      if (t && (label !== 'Date' || !time('P580'))) facts.push({ label, parts: [{ text: formatDate(t) }] })
+    }
+    // A painting is "created", a city "established", a company "founded".
     const inception = time('P571')
-    if (inception) facts.push({ label: 'Founded', parts: [{ text: formatDate(inception) }] })
+    const madeBySomeone = ['P170', 'P50', 'P57', 'P86'].some((p) => claims[p]?.length)
+    const isPlace = claims.P1082 || claims.P625
+    if (inception) {
+      facts.push({ label: madeBySomeone ? 'Created' : isPlace ? 'Established' : 'Founded', parts: [{ text: formatDate(inception) }] })
+    }
+    const employees = latestQuantity(claims.P1128)
+    if (employees) facts.push({ label: 'Employees', parts: [{ text: Math.round(employees.amount).toLocaleString('en-US') }] })
     const population = latestQuantity(claims.P1082)
     if (population) facts.push({ label: 'Population', parts: [{ text: Math.round(population.amount).toLocaleString('en-US') }] })
     const area = latestQuantity(claims.P2046)
@@ -313,9 +351,17 @@ export async function getRelated(qid, selfTitle) {
   }
   for (const [prop, max, label] of factSpec) {
     // Different items can share a label (e.g. the same award for different years); show each name once.
-    const unique = [...new Map(ids(prop).map(part).filter(Boolean).map((r) => [r.text, r])).values()]
+    const unique = [...new Map((SINGLE_VALUE.has(prop) ? current(prop) : ids(prop)).map(part).filter(Boolean).map((r) => [r.text, r])).values()]
     if (unique.length) facts.push({ label, parts: unique.slice(0, max), more: SINGLE_VALUE.has(prop) ? 0 : Math.max(0, unique.length - max) })
   }
+
+  // "Venue: United States" next to "Country: United States" adds nothing; keep the first mention.
+  const seen = new Set()
+  const distinct = facts.filter((f) => {
+    const repeat = !['Born', 'Died'].includes(f.label) && f.parts.every((p) => seen.has(p.text))
+    f.parts.forEach((p) => seen.add(p.text))
+    return !repeat
+  })
 
   const titlesOf = (list) =>
     [...new Set(list.map((id) => refs[id]?.title).filter((t) => t && t !== selfTitle))].slice(0, 12)
@@ -323,7 +369,7 @@ export async function getRelated(qid, selfTitle) {
     getTopics(titlesOf(deeperIds)).then(applyFilter),
     getTopics(titlesOf(broaderIds)).then(applyFilter),
   ])
-  return { isPerson, facts, deeper, broader }
+  return { isPerson, facts: distinct, deeper, broader }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -373,9 +419,11 @@ export async function getMentionedTopics(title, plainText, limit = 12) {
   const wikitext = Object.values(data.query?.pages || {})[0]?.revisions?.[0]?.slots?.main?.content || ''
   const haystack = plainText.toLowerCase()
   const selfKey = title.toLowerCase()
+  const selfBase = selfKey.replace(/\s*\(.*\)$/, '')
 
   const scored = [...linkStats(wikitext)]
-    .filter(([t]) => t.toLowerCase() !== selfKey && !NOISE.test(t))
+    // Namesakes ("Mona Lisa (opera)", "Mona Lisa (Nat King Cole song)") share the name, not the subject.
+    .filter(([t]) => t.toLowerCase() !== selfKey && t.toLowerCase().replace(/\s*\(.*\)$/, '') !== selfBase && !NOISE.test(t))
     .map(([t, { links, displays }]) => {
       const base = t.replace(/\s*\(.*\)$/, '').toLowerCase() // "Honeydew (excretion)" -> "honeydew"
       const names = new Set([...displays, ...(base.length >= 4 ? [base] : [])])

@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import SpeakButton from './SpeakButton'
 
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Open/closed state shared by the article and its table of contents. The first section is open
-// by default; anything the reader toggles is remembered as an explicit override.
+// Open/closed state shared by the article and its table of contents. Every section starts closed;
+// whatever the reader opens or closes is remembered per section.
 export function useOpenSections(sections) {
   const [overrides, setOverrides] = useState({})
-  const isOpen = (id) => overrides[id] ?? id === sections[0]?.id
+  const isOpen = (id) => overrides[id] ?? false
   const allOpen = sections.length > 0 && sections.every((s) => isOpen(s.id))
 
   return {
@@ -23,6 +24,10 @@ export function useOpenSections(sections) {
   }
 }
 
+// Everything a section says, as one block for text to speech: title, text, then each subsection.
+const sectionText = (s) =>
+  [s.title, ...s.paragraphs, ...s.children.filter((c) => c.paragraphs.length).flatMap((c) => [c.title, ...c.paragraphs])].join('. ').replace(/\.\.\s/g, '. ')
+
 function Body({ paragraphs }) {
   return paragraphs.map((p, i) => <p key={i} className="muted article-p">{p}</p>)
 }
@@ -34,7 +39,10 @@ export default function ArticleSections({ title, lead, sections, state }) {
     <div className="article">
       {lead.length > 0 && (
         <section aria-labelledby="overview-heading">
-          <h2 id="overview-heading" className="serif">The full picture</h2>
+          <div className="section-head">
+            <h2 id="overview-heading" className="serif">The full picture</h2>
+            <SpeakButton id="overview" label={`The full picture of ${title}`} text={`The full picture of ${title}. ${lead.join(' ')}`} />
+          </div>
           <Body paragraphs={lead} />
         </section>
       )}
@@ -51,12 +59,15 @@ export default function ArticleSections({ title, lead, sections, state }) {
             const open = state.isOpen(s.id)
             return (
               <div key={s.id} id={s.id} className="acc">
-                <h3>
-                  <button className="acc-btn serif" aria-expanded={open} aria-controls={`${s.id}-panel`} onClick={() => state.toggle(s.id)}>
-                    {s.title}
-                    <span className="acc-icon" aria-hidden="true">{open ? '−' : '+'}</span>
-                  </button>
-                </h3>
+                <div className="acc-head">
+                  <h3>
+                    <button className="acc-btn serif" aria-expanded={open} aria-controls={`${s.id}-panel`} onClick={() => state.toggle(s.id)}>
+                      {s.title}
+                      <span className="acc-icon" aria-hidden="true">{open ? '−' : '+'}</span>
+                    </button>
+                  </h3>
+                  <SpeakButton id={s.id} label={s.title} text={sectionText(s)} />
+                </div>
                 {open && (
                   <div id={`${s.id}-panel`} className="acc-panel">
                     <Body paragraphs={s.paragraphs} />

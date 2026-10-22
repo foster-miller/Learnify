@@ -23,3 +23,7 @@ export const TextSize = make(<><path d="M3 19 8 6l5 13M5 14h6" /><path d="M15 19
 export const Sprout = make(<><path d="M12 21v-9" /><path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6z" /><path d="M12 14c0-3-2-5-6-5 0 3 2 5 6 5z" /></>)
 export const Book = make(<><path d="M12 6c-2-1.500-5-2-9-2v14c4 0 7 .5 9 2 2-1.500 5-2 9-2V4c-4 0-7 .5-9 2z" /><path d="M12 6v14" /></>)
 export const Cloud = make(<path d="M7 18a4 4 0 0 1-.5-8 5.500 5.500 0 0 1 10.500-1A4.500 4.500 0 0 1 17 18z" />)
+export const Play = make(<path d="M8 5v14l11-7z" />)
+export const Pause = make(<path d="M8 5v14M16 5v14" />)
+export const Stop = make(<rect x="6" y="6" width="12" height="12" rx="1" />)
+export const Volume = make(<><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.500 8.500a5 5 0 0 1 0 7M18.500 5.500a9 9 0 0 1 0 13" /></>)
